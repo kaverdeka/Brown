@@ -6,6 +6,7 @@
 
 #include <forward_list>
 #include <iterator>
+#include <algorithm>
 
 using namespace std;
 
@@ -15,25 +16,49 @@ public:
     using BucketList = forward_list<Type>;
 
 public:
-    explicit HashSet(
+    HashSet(
             size_t num_buckets,
-            const Hasher& hasher = {}
-    ) {
+            const Hasher& hasher
+    ) : _set(num_buckets), _hasher(hasher)
+    {
+    }
 
+    explicit HashSet(
+            size_t num_buckets
+    ) : _set(num_buckets)
+    {
     }
 
     void Add(const Type& value) {
-
+        auto& list = _set[getIndex(value)];
+        auto it = find(list.begin(), list.end(), value);
+        if(it != list.end())
+            return;
+        list.push_front(value);
     }
+
     bool Has(const Type& value) const {
-        return true;
+        auto& list = _set[getIndex(value)];
+        auto it = find(list.begin(), list.end(), value);
+        if(it != list.end())
+            return true;
+        return false;
     }
     void Erase(const Type& value) {
-
+        auto& list = _set[getIndex(value)];
+        list.remove(value);
     }
     const BucketList& GetBucket(const Type& value) const {
-
+        return _set[getIndex(value)];
     }
+
+private:
+    size_t getIndex(const Type& value) const {
+        auto mod = _hasher(value) % _set.size();
+        return mod < 0 ? -mod : mod;
+    }
+    vector<BucketList> _set;
+    Hasher _hasher;
 };
 
 struct IntHasher {
