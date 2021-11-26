@@ -3,4 +3,4 @@ project(Spendings)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Spendings spendingJson.cpp xml.cpp json.cpp)
+add_executable(Spendings test_ini.cpp xml.cpp json.cpp ini.cpp)
