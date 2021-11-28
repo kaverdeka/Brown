@@ -5,6 +5,7 @@
 /Spendings/cmake-build-debug/
 /StatsAggregator/cmake-build-debug/
 /Collide/cmake-build-debug/
+/CommentServer/cmake-build-debug/
 /.idea/.name
 /.idea/misc.xml
 /.idea/vcs.xml
