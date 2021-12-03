@@ -52,13 +52,13 @@ private:
 };
 
 ExpressionPtr Value(int value) {
-    return ExpressionPtr(new Value2(value));
+    return std::make_unique<Value2>(value);
 }
 
 ExpressionPtr Sum(ExpressionPtr left, ExpressionPtr right) {
-    return ExpressionPtr(new Op(move(left), move(right), OpType::PLUS));
+    return std::make_unique<Op>(move(left), move(right), OpType::PLUS);
 }
 
 ExpressionPtr Product(ExpressionPtr left, ExpressionPtr right){
-    return ExpressionPtr(new Op(move(left), move(right), OpType::MULT));
+    return std::make_unique<Op>(move(left), move(right), OpType::MULT);
 }
