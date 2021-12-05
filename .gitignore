@@ -12,9 +12,11 @@
 /Pipeline/cmake-build-debug/
 /Expression/cmake-build-debug/
 /Textures/cmake-build-debug/
+/Cache/cmake-build-debug/
 /.idea/.name
 /.idea/misc.xml
 /.idea/vcs.xml
 /.idea/workspace.xml
 /.idea/modules.xml
 /.idea/Pipeline.iml
+/.idea/shelf/
