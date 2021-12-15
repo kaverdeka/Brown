@@ -16,6 +16,7 @@
 /UniquePtr/cmake-build-debug/
 /Booking/cmake-build-debug/
 /Domains/cmake-build-debug/
+/TestDomains/cmake-build-debug/
 /.idea/.name
 /.idea/misc.xml
 /.idea/vcs.xml
