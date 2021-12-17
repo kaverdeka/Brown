@@ -3,6 +3,10 @@
 #include <iostream>
 #include <string>
 #include <ctime>
+#include <vector>
+#include <algorithm>
+#include <map>
+#include <unordered_map>
 
 using namespace std;
 static const int SECONDS_IN_DAY = 60 * 60 * 24;
@@ -56,15 +60,23 @@ struct Date {
     bool operator==(const Date& date) const {
         return year == date.year && month == date.month && day == date.day;
     }
+
+    bool operator<(const Date& date) const {
+        return vector<int>{ year, month, day } < vector<int>{date.year, date.month, date.day };
+    }
 };
 
 istream& operator>>(istream& is, Date& date) {
     string str;
     is >> str;
-    date.year = stoi(str.substr(0, 4));
-    date.month = stoi(str.substr(5, 2));
-    date.day = stoi(str.substr(8,2));
-    return  is;
+
+    istringstream str_stream(move(str));
+    str_stream >> date.year;
+    str_stream.ignore(1);
+    str_stream >> date.month;
+    str_stream.ignore(1);
+    str_stream >> date.day;
+    return is;
 }
 
 struct DateHasher {
@@ -86,45 +98,140 @@ int computeDaysDiff(const Date& date_to, const Date& date_from) {
     return (timestamp_to - timestamp_from) / SECONDS_IN_DAY;
 }
 
-class Budget {
+class BudgetUnorderedMap {
 public:
     double computeIncome(Date&& from, Date&& to) {
+        if(to < from)
+            return 0.0;
+
         double inc = 0.0;
-        Date date = from;
-        while(date != to.next()) {
+        auto date = from.asTimestamp();
+        auto next = to.next().asTimestamp();
+        while(date != next) {
             inc += _income[date];
-            date = date.next();
+            date += SECONDS_IN_DAY;
         }
         return inc;
     }
 
+    void earn(Date&& from, Date&& to, double value) {
+        if(to < from)
+            return;
+
+        double valuePerDay = (double) value / (computeDaysDiff(to, from) + 1);
+
+        auto date = from.asTimestamp();
+        auto next = to.next().asTimestamp();
+        while(date != next) {
+            _income[date] += valuePerDay;
+            date += SECONDS_IN_DAY;
+        }
+    }
+
+    void payTax(Date&& from, Date&& to) {
+        if(to < from)
+            return;
+
+        auto date = from.asTimestamp();
+        auto next = to.next().asTimestamp();
+        while(date != next) {
+            _income[date] = _income[date] * 0.87;
+            date += SECONDS_IN_DAY;
+        }
+    }
+
+private:
+    unordered_map<time_t /*Date*/, double/*, DateHasher*/> _income;
+};
+
+class BudgetMap {
+public:
+    double computeIncome(Date&& from, Date&& to) {
+        double inc = 0.0;
+
+        auto firstIt = _income.lower_bound(from);
+        auto lastIt = _income.upper_bound(to);
+
+        for(auto it = firstIt; it != lastIt; ++it) {
+            inc += it->second;
+        }
+
+        return inc;
+    }
+
     void earn(Date&& from, Date&& to, int value) {
-        double valuePerDay = (double) value / computeDaysDiff(to.next(), from);
+        double valuePerDay = (double) value / (computeDaysDiff(to, from) + 1);
 
         Date date = from;
-        while(date != to.next()) {
+        auto next = to.next();
+        while(date != next) {
             _income[date] += valuePerDay;
             date = date.next();
         }
     }
 
     void payTax(Date&& from, Date&& to) {
-        Date date = from;
-        while(date != to.next()) {
-            _income[date] = _income[date] * 0.87;
-            date = date.next();
+        auto firstIt = _income.lower_bound(from);
+        auto lastIt = _income.upper_bound(to);
+
+        for(auto it = firstIt; it != lastIt; ++it) {
+            it->second *= 0.87;
         }
     }
 
 private:
-    unordered_map<Date, double, DateHasher> _income;
+    map<Date, double> _income;
 };
+
+class BudgetVector {
+public:
+    BudgetVector() :
+        _income(computeDaysDiff(_firstDate, _lastDate), 0)
+    {
+    }
+
+    double computeIncome(Date&& from, Date&& to) {
+        double inc = 0.0;
+
+        for(auto i = getIndex(from); getIndex(to) < i; ++i) {
+            inc += _income[i];
+        }
+        return inc;
+    }
+
+    void earn(Date&& from, Date&& to, int value) {
+        double valuePerDay = (double) value / (computeDaysDiff(to, from) + 1);
+
+        for(auto i = getIndex(from); getIndex(to) < i; ++i) {
+            _income[i] += valuePerDay;
+        }
+    }
+
+    void payTax(Date&& from, Date&& to) {
+        for(auto i = getIndex(from); getIndex(to) < i; ++i) {
+            _income[i] *= 0.87;
+        }
+    }
+
+private:
+    size_t getIndex(const Date& date) const {
+        return computeDaysDiff(date, _firstDate);
+    }
+
+    static constexpr Date _firstDate = { 2000, 1, 1 };
+    static constexpr Date _lastDate = { 2099, 12, 31 };
+    vector<double> _income;
+};
+
+//*********************************
+using Budget = BudgetUnorderedMap;
+//*********************************
 
 struct Query {
     Type type;
     Date from;
     Date to;
-    int value = 0;
+    double value = 0.0;
 
     void run(Budget& budget) {
         switch (type) {
@@ -170,9 +277,10 @@ vector<Query> read(istream& stream) {
     return result;
 }
 
+
 void Test() {
     Budget budget;
-    budget.earn({2000, 1, 1}, {2000, 1, 1}, 10);
+    budget.earn({2000, 1, 1}, {2000, 1, 1}, 10.0);
     ASSERT_EQUAL(budget.computeIncome({2000, 1, 1}, {2000, 1, 1}), 10.0);
     budget.payTax({2000, 1, 1}, {2000, 1, 1});
     ASSERT_EQUAL(budget.computeIncome({2000, 1, 1}, {2000, 1, 1}), 10.0 * 0.87);
