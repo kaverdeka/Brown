@@ -1,174 +1,23 @@
 #include <string>
 #include <iostream>
 #include <unordered_map>
-#include <unordered_set>
-#include <vector>
-#include <memory>
 #include <list>
-#include <deque>
-#include <cmath>
 #include <algorithm>
 
 #include "test_runner.h"
 
+#include "BusStops.h"
+#include "Routes.h"
+#include "details.h"
+
 using namespace std;
-
+using  namespace details;
 //************************
-pair<string_view, optional<string_view>> SplitTwoStrict(string_view s, string_view delimiter = " ") {
-    const size_t pos = s.find(delimiter);
-    if (pos == s.npos) {
-        return {s, nullopt};
-    } else {
-        return {s.substr(0, pos), s.substr(pos + delimiter.length())};
-    }
-}
 
-pair<string_view, string_view> SplitTwo(string_view s, string_view delimiter = " ") {
-    const auto [lhs, rhs_opt] = SplitTwoStrict(s, delimiter);
-    return {lhs, rhs_opt.value_or("")};
-}
 
-string_view ReadToken(string_view& s, string_view delimiter = " ") {
-    const auto [lhs, rhs] = SplitTwo(s, delimiter);
-    s = rhs;
-    return lhs;
-}
 
-//********************************
-//a = sin²(Δφ/2) + cos φ1 ⋅ cos φ2 ⋅ sin²(Δλ/2)
-//c = 2 ⋅ atan2( √a, √(1−a) )
-//d = R ⋅ c
 
-static constexpr double pi = 3.1415926535;
-static constexpr double r = 6371;
 
-double deg2rad(double deg) {
-    return deg * (pi/180.);
-}
-
-double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-
-    double dLat = deg2rad(lat2-lat1);
-    double dLon = deg2rad(lon2-lon1);
-    double a =
-            sin(dLat/2) * sin(dLat/2) +
-            cos(deg2rad(lat1)) * cos(deg2rad(lat2)) *
-            sin(dLon/2) * sin(dLon/2);
-
-    double c = 2 * atan2(sqrt(a), sqrt(1-a));
-    double d = r * c * 1000; // Distance in km
-    return d;
-}
-//********************************
-class BusStop {
-public:
-    BusStop(const string& name, double latitude, double longitude) :
-        _name(name),
-        _latitude(latitude),
-        _longitude(longitude)
-        {}
-    friend istream& operator >>(istream& is, BusStop& busStop);
-
-    BusStop() = default;
-
-    const string& name() const {return _name;}
-    double latitude() const {return _latitude;}
-    double longitude() const {return _longitude;}
-
-private:
-    string _name;
-    double _latitude;
-    double _longitude;
-};
-
-istream& operator >>(istream& is, BusStop& busStop) {
-    getline(is, busStop._name, ':');
-    is.ignore(1); // ' '
-    is >> busStop._latitude;
-    is.ignore(2);
-    is >> busStop._longitude;
-    return is;
-};
-
-class Route {
-public:
-    enum Type {
-        Circle,
-        Linear
-    };
-
-    string number() const { return _number;}
-
-    int stopsCount() const {
-        if(_type == Circle) {
-            return size();
-        } else {
-            return size() * 2 - 1;
-        }
-    }
-
-    int uniqueStopsCount() const {
-        return _uniqueBusStops.size();
-    }
-
-    Type type() const {return _type;}
-    size_t size() const {return _busStops.size();}
-
-    void addStop(string_view busStop) {
-        _busStops.push_back(string(busStop));
-        _uniqueBusStops.insert(_busStops.back());
-    }
-
-    void print(unordered_map<string, BusStop>& busStops, ostream& os) {
-        if (_distance == 0.0) {
-            for (size_t i = 0; i < _busStops.size() - 1; ++i) {
-                auto &busStop1 = busStops.at(_busStops[i]);
-                auto &busStop2 = busStops.at(_busStops[i + 1]);
-                _distance += calculateDistance(busStop1.latitude(), busStop1.longitude(), busStop2.latitude(),
-                                              busStop2.longitude());
-            }
-
-            if (_type == Linear)
-                _distance *= 2;
-        }
-
-        os << stopsCount() << " stops on route, "
-        << uniqueStopsCount() << " unique stops, "
-        << _distance << " route length";
-    }
-
-    friend istream& operator >>(istream& is, Route& route);
-
-private:
-    Type _type = Linear;
-    string _number;
-    vector<string> _busStops;
-    unordered_set<string> _uniqueBusStops;
-
-    double _distance = 0.;
-};
-
-istream& operator >>(istream& is, Route& route) {
-    getline(is, route._number, ':');
-    is.ignore(1); // ' '
-    string line;
-    getline(is, line);
-    string delim;
-    if (line.find('>') != string::npos) { // circle
-        route._type = route.Circle;
-        delim = " > ";
-    } else { // linear
-        route._type = route.Linear;
-        delim = " - ";
-    }
-    string_view name;
-    string_view l = line;
-    while(name = ReadToken(l, delim), name != "") {
-        route.addStop(name);
-    }
-
-    return is;
-};
 
 enum QueryType {
     Stop,
@@ -189,6 +38,9 @@ istream& operator>> (istream& is, QueryType& type) {
 
 class DB {
 public:
+    using BusStops = unordered_map<string, std::shared_ptr<BusStop>>;
+    using Routes =  unordered_map<string, std::shared_ptr<Route>>;
+
     void init(istream& is) {
         size_t queryCount;
         is >> queryCount;
@@ -197,22 +49,27 @@ public:
         getline(is, str);
 
         for(size_t i = 0; i < queryCount; ++i) {
+            QueryType type;
+            is >> type;
+
             string line;
             getline(is, line);
             stringstream ss(line);
-            QueryType type;
-            ss >> type;
+
             switch (type) {
                 case Stop: {
-                    BusStop busStop;
-                    ss >> busStop;
-                    _busStops[busStop.name()] = move(busStop);
+                    BusStop stop(ss);
+                    if(_busStops.count(stop.name()) > 0) {
+                        _busStops[stop.name()]->set(stop.latitude(), stop.longitude());
+                    } else {
+                        auto busStop = make_shared<BusStop>(stop);
+                        _busStops[busStop->name()] = move(busStop);
+                    }
                     break;
                 }
                 case Bus: {
-                    Route route;
-                    ss >> route;
-                    _routes[route.number()] = move(route);
+                    auto route = make_shared<Route>(ss, _busStops);
+                    _routes[route->number()] = move(route);
                     break;
                 }
                 default:
@@ -240,7 +97,20 @@ public:
                     getline(ss, number, ':');
                     os << "Bus " << number << ": ";
                     if (_routes.count(number) > 0) {
-                        _routes.at(number).print(_busStops, os);
+                        _routes.at(number)->print(os);
+                        os << "\n";
+
+                    } else {
+                        os << "not found\n";
+                    }
+                    break;
+                }
+                case Stop: {
+                    string name;
+                    getline(ss, name, ':');
+                    os << "Stop " << name << ": ";
+                    if (_busStops.count(name) > 0) {
+                        _busStops.at(name)->print(os);
                         os << "\n";
 
                     } else {
@@ -252,8 +122,8 @@ public:
         }
     }
 private:
-    unordered_map<string, BusStop> _busStops;
-    unordered_map<string, Route> _routes;
+    BusStops _busStops;
+    Routes _routes;
 };
 
 
@@ -261,8 +131,7 @@ private:
 void BusStopTest() {
     string line = "Biryulyovo Zapadnoye: 12.12, 13.13";
     stringstream ss(line);
-    BusStop busStop;
-    ss >> busStop;
+    BusStop busStop(ss);
     ASSERT_EQUAL(busStop.name(), "Biryulyovo Zapadnoye");
     ASSERT_EQUAL(busStop.latitude(), 12.12);
     ASSERT_EQUAL(busStop.longitude(), 13.13);
@@ -282,11 +151,12 @@ void ReadTokenTest() {
 }
 
 void RouteTest() {
+    using BusStops = unordered_map<string, std::shared_ptr<BusStop>>;
+    BusStops stops;
     {
-        Route route;
         string line = "750: Tolstopaltsevo - Marushkino - Rasskazovka";
         stringstream ss(line);
-        ss >> route;
+        Route route(ss, stops);
         ASSERT_EQUAL(route.type(), Route::Type::Linear);
         ASSERT_EQUAL(route.number(), "750");
         ASSERT_EQUAL(route.stopsCount(), 5);
@@ -294,10 +164,9 @@ void RouteTest() {
     }
 
     {
-        Route route;
         string line = "751: Tolstopaltsevo > Marushkino > Rasskazovka > Tolstopaltsevo";
         stringstream ss(line);
-        ss >> route;
+        Route route(ss, stops);
         ASSERT_EQUAL(route.type(), Route::Type::Circle);
         ASSERT_EQUAL(route.number(), "751");
         ASSERT_EQUAL(route.stopsCount(), 4);
@@ -311,16 +180,16 @@ void DistanceTest() {
     ASSERT_EQUAL((res1 + res2)*2, 20939.5);
 }
 
-void PrintRouteTest(){
-    Route route;
-    route.addStop("Biryulyovo Zapadnoye");
-    route.addStop("Biryulyovo Zapadnoye2");
-    std::unordered_map<string, BusStop> stops;
-    stops["Biryulyovo Zapadnoye"] = BusStop("Biryulyovo Zapadnoye", 1, 1);
-    stops["Biryulyovo Zapadnoye2"] = BusStop("Biryulyovo Zapadnoye2", 2, 2);
-    route.print(stops, cout);
-}
-
+//void PrintRouteTest(){
+//    Route route;
+//    route.addStop("Biryulyovo Zapadnoye");
+//    route.addStop("Biryulyovo Zapadnoye2");
+//    std::unordered_map<string, BusStop> stops;
+//    stops["Biryulyovo Zapadnoye"] = BusStop("Biryulyovo Zapadnoye", 1, 1);
+//    stops["Biryulyovo Zapadnoye2"] = BusStop("Biryulyovo Zapadnoye2", 2, 2);
+//    route.print(stops, cout);
+//}
+//
 void DbTest() {
     DB db;
     stringstream ss("10\n"
@@ -348,12 +217,12 @@ void DbTest() {
 }
 
 int main() {
-//        TestRunner tr;
+//    TestRunner tr;
 //    RUN_TEST(tr, BusStopTest);
 //    RUN_TEST(tr, ReadTokenTest);
 //    RUN_TEST(tr, RouteTest);
 //    RUN_TEST(tr, DistanceTest);
-//    PrintRouteTest();
+////    PrintRouteTest();
 //    RUN_TEST(tr, DbTest);
 
     ios_base::sync_with_stdio(false);
