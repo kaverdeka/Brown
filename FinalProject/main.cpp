@@ -60,7 +60,7 @@ public:
                 case Stop: {
                     BusStop stop(ss);
                     if(_busStops.count(stop.name()) > 0) {
-                        _busStops[stop.name()]->set(stop.latitude(), stop.longitude());
+                        _busStops[stop.name()]->set(stop.latitude(), stop.longitude(), stop.distances());
                     } else {
                         auto busStop = make_shared<BusStop>(stop);
                         _busStops[busStop->name()] = move(busStop);
@@ -129,12 +129,17 @@ private:
 
 
 void BusStopTest() {
-    string line = "Biryulyovo Zapadnoye: 12.12, 13.13";
+    string line = "Biryulyovo Zapadnoye: 12.12, 13.13, 3900m to Biryulyovo Tovarnaya, 1000m to Biryulyovo Passazhirskaya";
+    //              Stop Biryulyovo Zapadnoye: 55.574371, 37.6517, 7500m to Rossoshanskaya ulitsa, 1800m to Biryusinka, 2400m to Universam
     stringstream ss(line);
     BusStop busStop(ss);
     ASSERT_EQUAL(busStop.name(), "Biryulyovo Zapadnoye");
     ASSERT_EQUAL(busStop.latitude(), 12.12);
     ASSERT_EQUAL(busStop.longitude(), 13.13);
+    BusStop::Distances dist;
+    dist["Biryulyovo Tovarnaya"] = 3900;
+    dist["Biryulyovo Passazhirskaya"] = 1000;
+    ASSERT_EQUAL(busStop.distances(), dist);
 }
 
 void ReadTokenTest() {
@@ -192,24 +197,30 @@ void DistanceTest() {
 //
 void DbTest() {
     DB db;
-    stringstream ss("10\n"
-            "Stop Tolstopaltsevo: 55.611087, 37.20829\n"
-            "Stop Marushkino: 55.595884, 37.209755\n"
-            "Bus 256: Biryulyovo Zapadnoye > Biryusinka > Universam > Biryulyovo Tovarnaya > Biryulyovo Passazhirskaya > Biryulyovo Zapadnoye\n"
-            "Bus 750: Tolstopaltsevo - Marushkino - Rasskazovka\n"
-            "Stop Rasskazovka: 55.632761, 37.333324\n"
-            "Stop Biryulyovo Zapadnoye: 55.574371, 37.6517\n"
-            "Stop Biryusinka: 55.581065, 37.64839\n"
-            "Stop Universam: 55.587655, 37.645687\n"
-            "Stop Biryulyovo Tovarnaya: 55.592028, 37.653656\n"
-            "Stop Biryulyovo Passazhirskaya: 55.580999, 37.659164\n");
+    stringstream ss("13\n"
+            "Stop Tolstopaltsevo: 55.611087, 37.20829, 3900m to Marushkino\n"
+                    "Stop Marushkino: 55.595884, 37.209755, 9900m to Rasskazovka\n"
+                    "Bus 256: Biryulyovo Zapadnoye > Biryusinka > Universam > Biryulyovo Tovarnaya > Biryulyovo Passazhirskaya > Biryulyovo Zapadnoye\n"
+                    "Bus 750: Tolstopaltsevo - Marushkino - Rasskazovka\n"
+                    "Stop Rasskazovka: 55.632761, 37.333324\n"
+                    "Stop Biryulyovo Zapadnoye: 55.574371, 37.6517, 7500m to Rossoshanskaya ulitsa, 1800m to Biryusinka, 2400m to Universam\n"
+                    "Stop Biryusinka: 55.581065, 37.64839, 750m to Universam\n"
+                    "Stop Universam: 55.587655, 37.645687, 5600m to Rossoshanskaya ulitsa, 900m to Biryulyovo Tovarnaya\n"
+                    "Stop Biryulyovo Tovarnaya: 55.592028, 37.653656, 1300m to Biryulyovo Passazhirskaya\n"
+                    "Stop Biryulyovo Passazhirskaya: 55.580999, 37.659164, 1200m to Biryulyovo Zapadnoye\n"
+                    "Bus 828: Biryulyovo Zapadnoye > Universam > Rossoshanskaya ulitsa > Biryulyovo Zapadnoye\n"
+                    "Stop Rossoshanskaya ulitsa: 55.595579, 37.605757\n"
+                    "Stop Prazhskaya: 55.611678, 37.603831");
 
     db.init(ss);
 
-    stringstream is("3\n"
+    stringstream is("6\n"
                     "Bus 256\n"
                     "Bus 750\n"
-                    "Bus 751");
+                    "Bus 751\n"
+                    "Stop Samara\n"
+                    "Stop Prazhskaya\n"
+                    "Stop Biryulyovo Zapadnoye");
     stringstream os;
     db.run(is, os);
 
@@ -223,7 +234,7 @@ int main() {
 //    RUN_TEST(tr, RouteTest);
 //    RUN_TEST(tr, DistanceTest);
 ////    PrintRouteTest();
-//    RUN_TEST(tr, DbTest);
+ //   RUN_TEST(tr, DbTest);
 
     ios_base::sync_with_stdio(false);
     cin.tie(NULL);

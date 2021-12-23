@@ -10,6 +10,7 @@
 #include <string>
 #include <set>
 #include <memory>
+#include <unordered_map>
 
 #include "details.h"
 
@@ -17,11 +18,13 @@ class Route;
 
 class BusStop {
 public:
+    using Distances = std::unordered_map<std::string, double>;
+
     BusStop(std::istream& is);
     BusStop(const BusStop& busStop);
     BusStop(const std::string& name);
 
-    void set(double lat, double lon);
+    void set(double lat, double lon, const Distances& distances);
 
     const std::string& name() const;
     double latitude() const;
@@ -30,12 +33,16 @@ public:
     void addRoute(const Route& route);
     void print(std::ostream& os);
 
+    const Distances& distances() const { return _distances; }
+    //void setDistance(const std::string& name, double distance);
+
 private:
     std::string _name;
     double _latitude = 0.;
     double _longitude = 0.;
 
     std::set<std::string> _routes;
+    Distances _distances;
 };
 
 #endif //FINALPROJECT_STOPBUSES_H

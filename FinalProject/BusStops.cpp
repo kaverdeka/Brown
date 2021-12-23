@@ -23,6 +23,23 @@ BusStop::BusStop(std::istream& is) {
     is >> _latitude;
     is.ignore(2);
     is >> _longitude;
+    is.ignore(2);
+
+    std::string line;
+    //is >> line;
+    getline(is, line);
+    std::string_view str = line;
+
+    while(true) {
+        //auto res = details::ReadToken(str, ", ");
+        auto distance = details::ReadToken(str, " to ");
+        if (distance.empty())
+            return;
+
+        auto name = details::ReadToken(str, ", ");
+        int dist = std::stoi(std::string(distance));
+        _distances[std::string(name)] = dist;
+    }
 }
 
 BusStop::BusStop(const BusStop& busStop) {
@@ -30,6 +47,7 @@ BusStop::BusStop(const BusStop& busStop) {
     _latitude = busStop._latitude;
     _longitude = busStop._longitude;
     _routes = busStop._routes;
+    _distances = busStop._distances;
 }
 
 BusStop::BusStop(const std::string& name) :
@@ -37,9 +55,10 @@ BusStop::BusStop(const std::string& name) :
 {
 }
 
-void BusStop::set(double lat, double lon) {
+void BusStop::set(double lat, double lon, const Distances& distances) {
     _latitude = lat;
     _longitude = lon;
+    _distances = distances;
 }
 
 const std::string& BusStop::name() const {return _name;}
@@ -60,4 +79,10 @@ void BusStop::print(std::ostream& os) {
         os << " " << route;
     }
 }
+
+//void BusStop::setDistance(const std::string& name, double distance) {
+//    if(_distances.count(name) < 1) {
+//        _distances[name] = distance;
+//    }
+//}
 

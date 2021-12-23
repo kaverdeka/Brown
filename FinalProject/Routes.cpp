@@ -60,20 +60,42 @@ void Route::addStop(std::shared_ptr<BusStop> busStop) {
     _uniqueBusStops.insert(_busStops.back());
 }
 
+double calculateShortDistance(const BusStop& busStop1, const BusStop& busStop2) {
+
+    return details::calculateDistance(busStop1.latitude(), busStop1.longitude(),
+                                                    busStop2.latitude(), busStop2.longitude());
+}
+
+double calculateRealDistance(const BusStop& busStop1, const BusStop& busStop2) {
+
+    if(busStop1.distances().count(busStop2.name()) > 0)
+        return busStop1.distances().at(busStop2.name());
+
+    return busStop2.distances().at(busStop1.name());
+    return busStop2.distances().at(busStop1.name());
+}
+
 void Route::print(std::ostream& os) {
-    if (_distance == 0.0) {
+    if (_shortestDistance == 0.0) {
         for (size_t i = 0; i < _busStops.size() - 1; ++i) {
-            auto busStop1 = _busStops[i];
-            auto busStop2 = _busStops[i + 1];
-            _distance += details::calculateDistance(busStop1->latitude(), busStop1->longitude(),
-                                                    busStop2->latitude(), busStop2->longitude());
+            const auto& busStop1 = *_busStops[i];
+            const auto& busStop2 = *_busStops[i + 1];
+
+            _shortestDistance += calculateShortDistance(busStop1, busStop2);
+            _realDistance += calculateRealDistance(busStop1, busStop2);
+
+            if(_type == Linear) {
+                _realDistance += calculateRealDistance(busStop2, busStop1);
+            }
         }
 
-        if (_type == Linear)
-            _distance *= 2;
+        if (_type == Linear) {
+            _shortestDistance *= 2;
+        }
     }
 
     os << stopsCount() << " stops on route, "
        << uniqueStopsCount() << " unique stops, "
-       << _distance << " route length";
+       << _realDistance << " route length, "
+       << _realDistance / _shortestDistance << " curvature";
 }

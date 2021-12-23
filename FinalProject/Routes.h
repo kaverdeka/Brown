@@ -43,9 +43,11 @@ public:
     void print(std::ostream& os);
 
 private:
+
     Type _type = Linear;
     std::string _number;
-    double _distance = 0.;
+    double _shortestDistance = 0.;
+    double _realDistance = 0.;
 
     std::vector<std::shared_ptr<BusStop>> _busStops;
     std::unordered_set<std::shared_ptr<BusStop>> _uniqueBusStops;
