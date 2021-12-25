@@ -42,6 +42,18 @@ BusStop::BusStop(std::istream& is) {
     }
 }
 
+BusStop::BusStop(const Json::Node& node) {
+    auto query = node.AsMap();
+
+    _name = query.at("name").AsString();
+    _longitude = query.at("longitude").AsDouble();
+    _latitude= query.at("latitude").AsDouble();
+    auto stops = query.at("road_distances").AsMap();
+    for (const auto&[name, length]: stops) {
+        _distances[name] = length.AsInt();
+    }
+}
+
 BusStop::BusStop(const BusStop& busStop) {
     _name = busStop._name;
     _latitude = busStop._latitude;
@@ -69,14 +81,28 @@ void BusStop::addRoute(const Route& route) {
     _routes.insert(route.number());
 }
 
-void BusStop::print(std::ostream& os) {
-    if(_routes.empty()) {
-        os << "no buses";
-        return;
-    }
-    os << "buses";
-    for(auto route : _routes) {
-        os << " " << route;
+void BusStop::print(std::ostream& os, bool isJson, int id) {
+    if (!isJson) {
+        if (_routes.empty()) {
+            os << "no buses";
+            return;
+        }
+        os << "buses";
+        for (auto route: _routes) {
+            os << " " << route;
+        }
+    } else {
+        os << "\"buses\": [";
+
+        bool isFirst = true;
+        for (auto route: _routes) {
+            if(!isFirst)
+                os << ",";
+            os << "\n\"" << route << "\"";
+            isFirst = false;
+        }
+
+        os << "],\n" << "\"request_id\": " << id;
     }
 }
 

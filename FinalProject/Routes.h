@@ -15,6 +15,7 @@
 
 #include "details.h"
 #include <memory>
+#include "json.h"
 
 class BusStop;
 
@@ -28,6 +29,10 @@ public:
 
     Route(std::istream& is, BusStops& busStops);
 
+    Route(const Json::Node& node, BusStops& busStops);
+
+    Route(const std::string& name, Type type) : _number(name), _type(type) {}
+
     const std::string& number() const;
 
     int stopsCount() const;
@@ -40,10 +45,9 @@ public:
 
     void addStop(std::shared_ptr<BusStop>);
 
-    void print(std::ostream& os);
+    void print(std::ostream& os, bool isJson = false, int id = 0);
 
 private:
-
     Type _type = Linear;
     std::string _number;
     double _shortestDistance = 0.;

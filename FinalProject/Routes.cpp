@@ -24,16 +24,38 @@ Route::Route(std::istream& is, BusStops& busStops) {
     std::string_view l = line;
 
     while(name = details::ReadToken(l, delim), name != "") {
-        std::string busNumber(name);
-        if(busStops.count(busNumber) > 0) {
-            auto busStop = busStops[busNumber];
+        std::string stopName(name);
+        if(busStops.count(stopName) > 0) {
+            auto busStop = busStops[stopName];
             busStop->addRoute(*this);
-            addStop(busStops[busNumber]);
+            addStop(busStops[stopName]);
         } else {
-            auto busStop = std::make_shared<BusStop>(busNumber);
+            auto busStop = std::make_shared<BusStop>(stopName);
             addStop(busStop);
             busStop->addRoute(*this);
-            busStops[busNumber] = move(busStop);
+            busStops[stopName] = move(busStop);
+        }
+    }
+}
+
+Route::Route(const Json::Node& node, BusStops& busStops) {
+    auto query = node.AsMap();
+    _number = query.at("name").AsString();
+    bool isRound = query.at("is_roundtrip").AsBool();
+    _type = static_cast<Route::Type>(!isRound);
+    auto stops = query.at("stops").AsArray();
+    for (const auto &stop: stops) {
+        std::string stopName = stop.AsString();
+
+        if (busStops.count(stopName) > 0) {
+            auto busStop = busStops[stopName];
+            busStop->addRoute(*this);
+            addStop(busStops[stopName]);
+        } else {
+            auto busStop = std::make_shared<BusStop>(stopName);
+            addStop(busStop);
+            busStop->addRoute(*this);
+            busStops[stopName] = move(busStop);
         }
     }
 }
@@ -71,11 +93,13 @@ double calculateRealDistance(const BusStop& busStop1, const BusStop& busStop2) {
     if(busStop1.distances().count(busStop2.name()) > 0)
         return busStop1.distances().at(busStop2.name());
 
-    return busStop2.distances().at(busStop1.name());
-    return busStop2.distances().at(busStop1.name());
+    if(busStop2.distances().count(busStop1.name()) > 0)
+        return busStop2.distances().at(busStop1.name());
+
+    return 0.0;
 }
 
-void Route::print(std::ostream& os) {
+void Route::print(std::ostream& os, bool isJson, int id) {
     if (_shortestDistance == 0.0) {
         for (size_t i = 0; i < _busStops.size() - 1; ++i) {
             const auto& busStop1 = *_busStops[i];
@@ -94,8 +118,18 @@ void Route::print(std::ostream& os) {
         }
     }
 
-    os << stopsCount() << " stops on route, "
-       << uniqueStopsCount() << " unique stops, "
-       << _realDistance << " route length, "
-       << _realDistance / _shortestDistance << " curvature";
+    if(!isJson) {
+        os << stopsCount() << " stops on route, "
+           << uniqueStopsCount() << " unique stops, "
+           << _realDistance << " route length, "
+           << _realDistance / _shortestDistance << " curvature";
+    } else {
+
+        os << "\"route_length\": " << _realDistance << ",\n"
+            <<"\"request_id\": " << id << ",\n"
+            << "\"curvature\": " << _realDistance / _shortestDistance << ",\n"
+            << "\"stop_count\": " << stopsCount()<< ",\n"
+            << "\"unique_stop_count\": " << uniqueStopsCount();
+    }
+
 }

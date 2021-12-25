@@ -13,6 +13,7 @@
 #include <unordered_map>
 
 #include "details.h"
+#include "json.h"
 
 class Route;
 
@@ -21,6 +22,7 @@ public:
     using Distances = std::unordered_map<std::string, double>;
 
     BusStop(std::istream& is);
+    BusStop(const Json::Node& node);
     BusStop(const BusStop& busStop);
     BusStop(const std::string& name);
 
@@ -31,7 +33,7 @@ public:
     double longitude() const;
 
     void addRoute(const Route& route);
-    void print(std::ostream& os);
+    void print(std::ostream& os, bool isJson = false, int id = 0);
 
     const Distances& distances() const { return _distances; }
     //void setDistance(const std::string& name, double distance);
