@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <list>
 #include <algorithm>
+#include <numeric>
 
 #include "test_runner.h"
 
@@ -10,16 +11,14 @@
 #include "Routes.h"
 #include "details.h"
 #include "json.h"
+#include "graph.h"
+#include "router.h"
+
+#include "GraphRouter.h"
 
 using namespace std;
 using  namespace details;
 //************************
-
-
-
-
-
-
 enum QueryType {
     Stop,
     Bus
@@ -120,10 +119,8 @@ public:
                     os << "Bus " << number << ": ";
                     if (_routes.count(number) > 0) {
                         _routes.at(number)->print(os);
-                        os << "\n";
-
                     } else {
-                        os << "not found\n";
+                        os << "not found";
                     }
                     break;
                 }
@@ -133,10 +130,9 @@ public:
                     os << "Stop " << name << ": ";
                     if (_busStops.count(name) > 0) {
                         _busStops.at(name)->print(os);
-                        os << "\n";
 
                     } else {
-                        os << "not found\n";
+                        os << "not found";
                     }
                     break;
                 }
@@ -151,42 +147,87 @@ public:
         for (auto& request: requests) {
             if(!isFirst)
                 os << ",";
-            os << "\n{\n";
+            os << "{";
             isFirst = false;
 
             auto query = request.AsMap();
             string type = query.at("type").AsString();
-            auto name = query.at("name").AsString();
             auto id = query.at("id").AsInt();
             if (type == "Stop") {
+                auto name = query.at("name").AsString();
                 if (_busStops.count(name) > 0) {
                     _busStops.at(name)->print(os, true, id);
-                    os << "\n";
 
                 } else {
                     os << "\"request_id\": " << id <<
-                    ",\n\"error_message\": " << "\"not found\"\n";
+                    ",\"error_message\": " << "\"not found\"";
                 }
             } else if (type == "Bus") {
+                auto name = query.at("name").AsString();
                 if (_routes.count(name) > 0) {
                     _routes.at(name)->print(os, true, id);
-                    os << "\n";
 
                 } else {
                     os << "\"request_id\": " << id <<
-                       ",\n\"error_message\": " << "\"not found\"\n";
+                       ",\"error_message\": " << "\"not found\"";
                 }
+            } else if (type == "Route") {
+                // TODO
+                auto from = query.at("from").AsString();
+                auto to = query.at("to").AsString();
+
+                if(!_router) {
+                    graphInit();
+                }
+
+                _router->buildRoute(from, to);
+                os << "\"request_id\": " << id << "";
+
+                // TODO
             }
             os << "}";
         }
         os << "]";
     }
+
+    void preInit(const Json::Node& node) {
+        auto settings = node.AsMap();
+        _waitingTime = settings.at("bus_wait_time").AsInt();
+        _busVelocity = settings.at("bus_velocity").AsInt() * 1000. / 60.;
+    }
+
+    void graphInit() {
+        size_t vertexCount = std::accumulate(
+                _busStops.begin(), _busStops.end(), _busStops.size(), [](size_t ret, std::pair<string, std::shared_ptr<BusStop>> stop)
+        {
+            return ret += stop.second->routesCount();
+        });
+
+        _router = make_unique<GraphRouter>();
+        _router->setVertexCount(vertexCount);
+
+        for(auto& [name, route] : _routes) {
+            route->createEdges(_busVelocity, *_router);
+        }
+        for(auto& [name, busStop] : _busStops) {
+            busStop->createEdges(_waitingTime, *_router);
+        }
+    }
+
+    struct Vertex {
+        std::string stopName;
+        std::string routeName;
+    };
+
 private:
     BusStops _busStops;
     Routes _routes;
+
+    double _waitingTime;        // min
+    double _busVelocity;        // m / min
+
+    unique_ptr<GraphRouter> _router = nullptr;
 };
-
-
 
 void BusStopTest() {
     string line = "Biryulyovo Zapadnoye: 12.12, 13.13, 3900m to Biryulyovo Tovarnaya, 1000m to Biryulyovo Passazhirskaya";
@@ -544,6 +585,18 @@ void JsonTest() {
 
 }
 
+void RouterTest() {
+    GraphRouter router;
+    router.setVertexCount(3);
+    router.addEdge("a", "a", "b", "b", 1);
+    router.addEdge("b", "b", "a", "a", 5);
+    router.addEdge("a", "", "a", "a", 2);
+
+
+    router.buildRoute("a", "bb");
+    router.buildRoute("bb", "aa");
+}
+
 int main() {
 //    TestRunner tr;
 //    RUN_TEST(tr, BusStopTest);
@@ -553,6 +606,7 @@ int main() {
 //    PrintRouteTest();
 //   RUN_TEST(tr, DbTest);
 //    RUN_TEST(tr, JsonTest);
+ //   RUN_TEST(tr, RouterTest);
 
     ios_base::sync_with_stdio(false);
     cin.tie(NULL);
@@ -564,6 +618,7 @@ int main() {
 
     auto doc = Json::Load(cin);
     auto root = doc.GetRoot().AsMap();
+    db.preInit(root["routing_settings"]);
     db.initJson(root["base_requests"]);
     db.runJson(root["stat_requests"], cout);
 

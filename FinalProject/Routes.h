@@ -16,6 +16,8 @@
 #include "details.h"
 #include <memory>
 #include "json.h"
+#include "graph.h"
+#include "GraphRouter.h"
 
 class BusStop;
 
@@ -26,6 +28,7 @@ public:
         Linear
     };
     using BusStops = std::unordered_map<std::string, std::shared_ptr<BusStop>>;
+    using Edges = std::vector<Graph::Edge<double>>;
 
     Route(std::istream& is, BusStops& busStops);
 
@@ -46,6 +49,8 @@ public:
     void addStop(std::shared_ptr<BusStop>);
 
     void print(std::ostream& os, bool isJson = false, int id = 0);
+
+    void createEdges(double velocity, GraphRouter& router);
 
 private:
     Type _type = Linear;

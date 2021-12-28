@@ -14,12 +14,15 @@
 
 #include "details.h"
 #include "json.h"
+#include "graph.h"
+#include "GraphRouter.h"
 
 class Route;
 
 class BusStop {
 public:
     using Distances = std::unordered_map<std::string, double>;
+    using Edges = std::vector<Graph::Edge<double>>;
 
     BusStop(std::istream& is);
     BusStop(const Json::Node& node);
@@ -37,6 +40,9 @@ public:
 
     const Distances& distances() const { return _distances; }
     //void setDistance(const std::string& name, double distance);
+    const size_t routesCount() const { return _routes.size(); }
+
+    void createEdges(double waitingTime, GraphRouter& router);
 
 private:
     std::string _name;
