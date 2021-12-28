@@ -17,18 +17,31 @@ void GraphRouter::setVertexCount(size_t vertexCount) {
 
 void GraphRouter::addEdge(const std::string& busStopNameFrom, const std::string& routeNameFrom,
                           const std::string& busStopNameTo, const std::string& routeNameTo,
-                          double time, const std::string& type) {
+                          double time, int spanCount) {
 
-    std::string fullNameFrom = busStopNameFrom + routeNameFrom;
-    std::string fullNameTo = busStopNameTo + routeNameTo;
+    std::string fullNameFrom = busStopNameFrom;
+    std::string fullNameTo = busStopNameTo;
+
     if(_idxes.count(fullNameFrom) < 1) {
         _idxes[fullNameFrom] = _currentIdx++;
     }
     if(_idxes.count(fullNameTo) < 1) {
         _idxes[fullNameTo] = _currentIdx++;
     }
+
+    std::string type;
+    if (spanCount == 0) {
+        type = "Wait";
+    } else {
+        type = "Bus";
+    }
+
     size_t id = _graph->AddEdge({_idxes[fullNameFrom], _idxes[fullNameTo], time});
-    _types[id] = {busStopNameFrom, busStopNameTo, type, time, routeNameFrom};
+    _types[id] = {busStopNameFrom, busStopNameTo, type, time, routeNameFrom, spanCount};
+
+    std::cout << busStopNameFrom << " -> " << busStopNameTo << "; type = "
+        << type << "; route = " << routeNameFrom << "; span_count = " << spanCount
+        << "; time = " << time << "\n";
 }
 
 void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& busStopTo) {
@@ -52,7 +65,7 @@ void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& 
         int spanCount = 0;
         double time = 0.;
         std::string number;
-        for(size_t i = 0; i < edgeInfo.edge_count - 1; ++i) {
+        for(size_t i = 0; i < edgeInfo.edge_count; ++i) {
 
             auto edgeId = _router->GetRouteEdge(edgeInfo.id, i);
             const auto& info = _types[edgeId];
@@ -78,7 +91,7 @@ void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& 
                 number = info.number;
             }
 
-            if ( i == edgeInfo.edge_count - 2) {
+            if (i == edgeInfo.edge_count - 1) {
                 if(spanCount > 0) {
                     std::cout << ", {\"time\": " << time << ", " << "\"type\": " << "\"" << "Bus" << "\"" << ", "
                               << "\"span_count\": " << spanCount << ", \"bus\": " << "\"" << number << "\"}";

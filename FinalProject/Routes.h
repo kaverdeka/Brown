@@ -50,7 +50,7 @@ public:
 
     void print(std::ostream& os, bool isJson = false, int id = 0);
 
-    void createEdges(double velocity, GraphRouter& router);
+    void createEdges(double velocity, double waitingTime, GraphRouter& router);
 
 private:
     Type _type = Linear;
