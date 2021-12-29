@@ -19,7 +19,7 @@ public:
     void setVertexCount(size_t);
     void addEdge( const std::string& busStopNameFrom, const std::string& routeNameFrom,
                   const std::string& busStopNameTo, const std::string& routeNameTo,
-                  double time, int spanCount = 0);
+                  double time, const std::string& type = "Bus");
 
     void buildRoute(const std::string&, const std::string& );
 
@@ -29,7 +29,6 @@ public:
         std::string type;
         double weight;
         std::string number;
-        int spanCount;
     };
 
 private:

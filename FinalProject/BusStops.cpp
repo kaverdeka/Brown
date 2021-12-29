@@ -109,24 +109,21 @@ void BusStop::print(std::ostream& os, bool isJson, int id) {
 
 void BusStop::createEdges(double waitingTime, GraphRouter& router) {
 
-//    std::string type = "Wait";
-//    router.addEdge(_name + "_wait", "", _name, "", waitingTime, type);
+    std::vector<std::string> routes(_routes.begin(), _routes.end());
+    if (routes.empty())
+        return;
 
-//    std::vector<std::string> routes(_routes.begin(), _routes.end());
-//    if (routes.empty())
-//        return;
-//
-//    std::string type = "Wait";
-//    for(size_t i = 0; i < routes.size()-1; ++i) {
-//        router.addEdge(_name, std::string(""), _name, routes[i], waitingTime, type);
-//        router.addEdge(_name, routes[i], _name, std::string(""), 0, type);
-//
-//        for(size_t j = i + 1; j < routes.size(); ++j) {
-//            router.addEdge(_name, routes[i], _name, routes[j], waitingTime, type);
-//            router.addEdge(_name, routes[j], _name, routes[i], waitingTime, type);
-//        }
-//    }
-//    // for last
-//    router.addEdge(_name, std::string(""), _name, routes[routes.size()-1], waitingTime, type);
-//    router.addEdge(_name, routes[routes.size()-1], _name, std::string(""), 0., type);
+    std::string type = "Wait";
+    for(size_t i = 0; i < routes.size()-1; ++i) {
+        router.addEdge(_name, std::string(""), _name, routes[i], waitingTime, type);
+        router.addEdge(_name, routes[i], _name, std::string(""), 0, type);
+
+        for(size_t j = i + 1; j < routes.size(); ++j) {
+            router.addEdge(_name, routes[i], _name, routes[j], waitingTime, type);
+            router.addEdge(_name, routes[j], _name, routes[i], waitingTime, type);
+        }
+    }
+    // for last
+    router.addEdge(_name, std::string(""), _name, routes[routes.size()-1], waitingTime, type);
+    router.addEdge(_name, routes[routes.size()-1], _name, std::string(""), 0., type);
 }

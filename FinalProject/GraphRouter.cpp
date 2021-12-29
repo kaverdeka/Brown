@@ -17,10 +17,13 @@ void GraphRouter::setVertexCount(size_t vertexCount) {
 
 void GraphRouter::addEdge(const std::string& busStopNameFrom, const std::string& routeNameFrom,
                           const std::string& busStopNameTo, const std::string& routeNameTo,
-                          double time, int spanCount) {
+                          double time, const std::string& type) {
 
-    std::string fullNameFrom = busStopNameFrom;
+    std::string fullNameFrom = busStopNameFrom + routeNameFrom;
     std::string fullNameTo = busStopNameTo;
+    if (type != "End") {
+        fullNameTo += routeNameTo;
+    }
 
     if(_idxes.count(fullNameFrom) < 1) {
         _idxes[fullNameFrom] = _currentIdx++;
@@ -28,20 +31,12 @@ void GraphRouter::addEdge(const std::string& busStopNameFrom, const std::string&
     if(_idxes.count(fullNameTo) < 1) {
         _idxes[fullNameTo] = _currentIdx++;
     }
-
-    std::string type;
-    if (spanCount == 0) {
-        type = "Wait";
-    } else {
-        type = "Bus";
-    }
-
     size_t id = _graph->AddEdge({_idxes[fullNameFrom], _idxes[fullNameTo], time});
-    _types[id] = {busStopNameFrom, busStopNameTo, type, time, routeNameFrom, spanCount};
+    _types[id] = {busStopNameFrom, busStopNameTo, type, time, routeNameFrom};
 
-    std::cout << busStopNameFrom << " -> " << busStopNameTo << "; type = "
-        << type << "; route = " << routeNameFrom << "; span_count = " << spanCount
-        << "; time = " << time << "\n";
+    std::cout << fullNameFrom << " -> " << fullNameTo << "; time = " << time << "; route = " << routeNameFrom <<
+        "; type = " << type << "\n";
+
 }
 
 void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& busStopTo) {
@@ -70,6 +65,16 @@ void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& 
             auto edgeId = _router->GetRouteEdge(edgeInfo.id, i);
             const auto& info = _types[edgeId];
 
+            std::cout << "i = " << i <<
+                      "; " << info.fromName <<
+                      " -> " << info.toName <<
+                      "; time = " << info.weight <<
+                      "; route = " << info.number <<
+                      "; type = " << info.type << "\n";
+
+            if(info.weight == 0)
+                continue;
+
             if (info.type == "Wait") {
                 if(!isFirst)
                     std::cout << ", ";
@@ -91,7 +96,7 @@ void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& 
                 number = info.number;
             }
 
-            if (i == edgeInfo.edge_count - 1) {
+            if ( i == edgeInfo.edge_count - 2) {
                 if(spanCount > 0) {
                     std::cout << ", {\"time\": " << time << ", " << "\"type\": " << "\"" << "Bus" << "\"" << ", "
                               << "\"span_count\": " << spanCount << ", \"bus\": " << "\"" << number << "\"}";

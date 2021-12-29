@@ -146,7 +146,7 @@ public:
         os << "[";
         for (auto& request: requests) {
             if(!isFirst)
-                os << ",";
+                os << ", \n";
             os << "{";
             isFirst = false;
 
@@ -172,6 +172,7 @@ public:
                        ",\"error_message\": " << "\"not found\"";
                 }
             } else if (type == "Route") {
+                // TODO
                 auto from = query.at("from").AsString();
                 auto to = query.at("to").AsString();
 
@@ -179,8 +180,10 @@ public:
                     graphInit();
                 }
 
-                _router->buildRoute(from + "_wait", to + "_wait");
+                _router->buildRoute(from, to);
                 os << "\"request_id\": " << id << "";
+
+                // TODO
             }
             os << "}";
         }
@@ -194,22 +197,27 @@ public:
     }
 
     void graphInit() {
-//        size_t vertexCount = std::accumulate(
-//                _busStops.begin(), _busStops.end(), _busStops.size(), [](size_t ret, std::pair<string, std::shared_ptr<BusStop>> stop)
-//        {
-//            return ret += stop.second->routesCount();
-//        });
+        size_t vertexCount = std::accumulate(
+                _busStops.begin(), _busStops.end(), _busStops.size(), [](size_t ret, std::pair<string, std::shared_ptr<BusStop>> stop)
+        {
+            return ret += stop.second->routesCount();
+        });
 
         _router = make_unique<GraphRouter>();
-        _router->setVertexCount(_busStops.size() * 2);
+        _router->setVertexCount(vertexCount);
 
         for(auto& [name, route] : _routes) {
-            route->createEdges(_busVelocity, _waitingTime, *_router);
+            route->createEdges(_busVelocity, *_router);
         }
-//        for(auto& [name, busStop] : _busStops) {
-//            busStop->createEdges(_waitingTime, *_router);
-//        }
+        for(auto& [name, busStop] : _busStops) {
+            busStop->createEdges(_waitingTime, *_router);
+        }
     }
+
+    struct Vertex {
+        std::string stopName;
+        std::string routeName;
+    };
 
 private:
     BusStops _busStops;
