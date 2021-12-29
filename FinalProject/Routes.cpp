@@ -136,52 +136,29 @@ void Route::print(std::ostream& os, bool isJson, int id) {
 
 void Route::createEdges(double velocity, double waitingTime, GraphRouter& router) {
 
-//    for (size_t i = 0; i < _busStops.size() - 1; ++i) {
-//        const auto& busStop1 = *_busStops[i];
-//        const auto& busStop2 = *_busStops[i + 1];
-//
-//        if(_type == Circle && i == _busStops.size() - 2) {
-//            router.addEdge(busStop1.name(), _number, busStop2.name() + "_wait", _number,
-//                           calculateRealDistance(busStop1, busStop2) / velocity);
-//            return;
-//        }
-//
-//        router.addEdge(busStop1.name(), _number, busStop2.name(), _number,
-//                       calculateRealDistance(busStop1, busStop2) / velocity);
-//
-//        router.addEdge(busStop1.name(), _number, busStop2.name() + "_wait", _number,
-//                       calculateRealDistance(busStop1, busStop2) / velocity);
-//
-//        if(_type == Linear) {
-//            router.addEdge(busStop2.name(), _number, busStop1.name(), _number,
-//                           calculateRealDistance(busStop2, busStop1) / velocity);
-//
-//            router.addEdge(busStop2.name(), _number, busStop1.name() + "_wait", _number,
-//                           calculateRealDistance(busStop2, busStop1) / velocity);
-//        }
-//    }
-
     for(size_t i = 0; i < _busStops.size() - 1; ++i) {
-        const auto& busStop1 = *_busStops[i];
+        const auto& busStop = *_busStops[i];
 
+        double forwardTime = 0.;
+        double backwardTime = 0.;
         for(size_t j = i + 1; j < _busStops.size(); ++j) {
             int span_count = j - i;
 
+            const auto& busStop1 = *_busStops[j - 1];
             const auto& busStop2 = *_busStops[j];
-            router.addEdge(busStop1.name(), _number, busStop2.name() + "_wait", _number,
-                 calculateRealDistance(busStop1, busStop2) / velocity, span_count);
 
-            router.addEdge(busStop1.name() + "_wait", _number, busStop2.name(), _number,
-                           waitingTime);
+            double time1 = calculateRealDistance(busStop1, busStop2) / velocity;
+            forwardTime += time1;
+            router.addEdge(busStop.name(), _number, busStop2.name() + "_wait", _number,
+                 forwardTime, span_count);
 
             if(_type == Linear) {
-                router.addEdge(busStop2.name(), _number, busStop1.name() + "_wait", _number,
-                               calculateRealDistance(busStop2, busStop1) / velocity, span_count);
+                double time2 = calculateRealDistance(busStop2, busStop1) / velocity;
+                backwardTime += time2;
 
-                router.addEdge(busStop2.name() + "_wait", _number, busStop1.name(), _number,
-                               waitingTime);
+                router.addEdge(busStop2.name(), _number, busStop.name() + "_wait", _number,
+                               backwardTime, span_count);
             }
-
         }
     }
 

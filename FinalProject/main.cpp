@@ -206,9 +206,9 @@ public:
         for(auto& [name, route] : _routes) {
             route->createEdges(_busVelocity, _waitingTime, *_router);
         }
-//        for(auto& [name, busStop] : _busStops) {
-//            busStop->createEdges(_waitingTime, *_router);
-//        }
+        for(auto& [name, busStop] : _busStops) {
+            busStop->createEdges(_waitingTime, *_router);
+        }
     }
 
 private:

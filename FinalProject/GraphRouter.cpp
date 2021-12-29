@@ -39,9 +39,9 @@ void GraphRouter::addEdge(const std::string& busStopNameFrom, const std::string&
     size_t id = _graph->AddEdge({_idxes[fullNameFrom], _idxes[fullNameTo], time});
     _types[id] = {busStopNameFrom, busStopNameTo, type, time, routeNameFrom, spanCount};
 
-    std::cout << busStopNameFrom << " -> " << busStopNameTo << "; type = "
-        << type << "; route = " << routeNameFrom << "; span_count = " << spanCount
-        << "; time = " << time << "\n";
+//    std::cout << busStopNameFrom << " -> " << busStopNameTo << "; type = "
+//        << type << "; route = " << routeNameFrom << "; span_count = " << spanCount
+//        << "; time = " << time << "\n";
 }
 
 void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& busStopTo) {
@@ -62,44 +62,24 @@ void GraphRouter::buildRoute(const std::string& busStopFrom, const std::string& 
 
         bool isFirst = true;
 
-        int spanCount = 0;
-        double time = 0.;
         std::string number;
         for(size_t i = 0; i < edgeInfo.edge_count; ++i) {
 
             auto edgeId = _router->GetRouteEdge(edgeInfo.id, i);
             const auto& info = _types[edgeId];
 
+            if(!isFirst)
+                std::cout << ", ";
+
             if (info.type == "Wait") {
-                if(!isFirst)
-                    std::cout << ", ";
-
-                if(spanCount > 0) {
-                    std::cout << "{\"time\": " << time << ", " << "\"type\": " << "\"" << "Bus" << "\"" << ", "
-                        << "\"span_count\": " << spanCount << ", \"bus\": " << "\"" << number << "\"}, ";
-
-                    spanCount = 0;
-                    time = 0;
-                }
                 std::cout << "{ \"time\": " << info.weight << ", " << "\"type\": " << "\""<< info.type << "\"" << ", "
                     << "\"stop_name\": " << "\"" << info.toName << "\"}";
-
-                isFirst = false;
             } else {
-                ++spanCount;
-                time += info.weight;
-                number = info.number;
+                std::cout << "{\"time\": " << info.weight << ", " << "\"type\": " << "\"" << info.type << "\"" << ", "
+                              << "\"span_count\": " << info.spanCount << ", \"bus\": " << "\"" << info.number << "\"}";
             }
 
-            if (i == edgeInfo.edge_count - 1) {
-                if(spanCount > 0) {
-                    std::cout << ", {\"time\": " << time << ", " << "\"type\": " << "\"" << "Bus" << "\"" << ", "
-                              << "\"span_count\": " << spanCount << ", \"bus\": " << "\"" << number << "\"}";
-
-                    spanCount = 0;
-                    time = 0;
-                }
-            }
+            isFirst = false;
         }
 
         std::cout << "], ";
